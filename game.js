@@ -10,7 +10,7 @@
 const OFFLINE_CAP_MS = 4 * 3600 * 1000;          // 離線收益 4 小時上限
 const PRESTIGE_THRESHOLD = 1e6;                  // 首次可轉型門檻 (lifetime)
 const SAVE_KEY = "idle_game_save";
-const SAVE_VERSION = 16;
+const SAVE_VERSION = 17;
 
 /* ---------- 靜態設定：傳送帶工廠 ---------- */
 const PRICE_PER_DRINK = 4;           // 每杯成品售價（再乘各種全域加成）
@@ -524,6 +524,7 @@ function newSave(){
     ads: {},                                     // 各區廣告到期時間
     brandPower: { taiwan:1, japan:1, korea:1 },  // 各區品牌力（併購對手吸收 → 永久吸引力）
     quality: { ingredient:0, training:0, brand:0, rnd:0 },  // 品質投資線等級（獨立於配方均價）
+    tutorial: { step:0, done:false, granted:false },  // 新手互動教學進度
     sellMarket: "taiwan",                        // （保留，現已賣到所有開的區）
     path: null,                                  // 互斥企業路線（mass/premium/auto）
     playTime: 0,                         // 累計遊玩秒數
@@ -786,9 +787,10 @@ function loop(){
     if(over) toast(`⚡ 電力超載！物流線降速至 ${Math.round(powerFactor()*100)}% — 快蓋發電廠`);
     else toast("✅ 電力恢復正常，物流線全速運轉");
   }
-  if(isVisible("page-biz")) factoryRenderItems();   // 只在經營頁畫運送動畫
+  if(isVisible("page-biz")) factoryRenderItems();   // 只在工廠頁畫運送動畫
   renderHeader();
   renderPrestigeBtn();
+  tutorialUpdate();                         // 新手教學：檢查步驟完成 + 對齊聚光燈
   requestAnimationFrame(loop);
 }
 
@@ -2488,6 +2490,7 @@ window.closeModal=closeModal; window.doPrestige=doPrestige; window.doShare=doSha
 function openSettings(){
   openModal(`<h2>⚙️ 設定</h2>
     <button class="ghost" onclick="openHelp()">❓ 遊戲說明</button>
+    <button class="ghost" onclick="replayTutorial()">🎓 重看新手教學</button>
     <button class="ghost" onclick="openStats()">📊 數據統計</button>
     <button class="ghost" onclick="toggleDark()">🌙 切換深色模式</button>
     <button class="ghost" onclick="closeModal();doShare()">📤 分享戰報</button>
@@ -2730,6 +2733,10 @@ function migrate(raw){
     raw.quality = raw.quality || {ingredient:0, training:0, brand:0, rnd:0};
     raw.version = 16;
   }
+  if(raw.version === 16){                           // V16→V17：新手互動教學（既有玩家直接跳過）
+    raw.tutorial = raw.tutorial || {step:0, done:true, granted:true};
+    raw.version = 17;
+  }
   return raw;
 }
 function load(){
@@ -2862,6 +2869,106 @@ function switchPage(p){
 }
 window.openPrestige=openPrestige;
 
+/* ===================== 新手互動教學（手把手聚光燈）===================== */
+const FACTORY_SPOT = ["#factoryWrap", "#factoryPalette"];   // 工廠：地皮＋工具列一起開洞
+const TUTORIAL = [
+  { center:true, html:"👋 歡迎來到 <b>手搖飲帝國</b>！<br>你要從一間小攤，蓋自動化工廠、展店、打市場戰，征服世界。<br>先用一分鐘學會核心：<b>生產飲料 → 賣錢</b>。<br><br>🎁 送你 <b>$1,200 創業基金</b> 起步！", btn:"開始教學" },
+  { spot:FACTORY_SPOT, html:"這是你的<b>工具列</b>。珍奶要 3 種原料，先蓋齊原料機：<br>點 🍃<b>茶園</b>、⚫<b>粉圓廠</b>、🥤<b>製杯廠</b> 各一座（選工具→在空地點一下放置；🍃茶園要放<b>綠色草地</b>）。",
+    done:()=> (S.generators.tea_farm||0)>=1 && (S.generators.pearl_mill||0)>=1 && (S.generators.cup_plant||0)>=1 },
+  { spot:FACTORY_SPOT, html:"很好！接著蓋一座 🫕<b>調製站</b>，它會把原料自動做成珍奶。",
+    done:()=> (S.generators.mixer||0)>=1 },
+  { spot:FACTORY_SPOT, html:"最後再蓋一座 🧋<b>出貨口</b>。",
+    done:()=> (S.generators.counter||0)>=1 },
+  { spot:FACTORY_SPOT, html:"現在<b>接管路</b>！選 🔀<b>輸送帶</b>，在格子上<b>拖曳</b>鋪設（朝拖曳方向、自動轉彎）：<br>① 把 3 種原料都送進 🫕調製站<br>② 再從調製站接一條到 🧋出貨口<br>第一杯珍奶送達就完成！",
+    done:()=> (S.retail?.stock||0)>0 || (FX.delivered||0)>0 },
+  { spot:["#tab-codex"], html:"🎉 珍奶進<b>中央倉</b>了！但還沒換成錢。<br>點底部「🏙️<b>經營</b>」分頁。",
+    done:()=> isVisible("page-codex") },
+  { spot:["#btnRetail"], html:"點 🏪<b>零售經營</b> — 這裡管店員把貨賣給客人。",
+    done:()=> !tutOvHidden() && tutModalHas("零售經營") },
+  { spot:["#modal"], html:"雇用<b>第一名店員</b>，他會自動把中央倉的珍奶賣給客人 → 賺錢！",
+    done:()=> retailClerks()>=1 },
+  { center:true, html:"🎉 <b>你學會核心循環了！</b><br>工廠生產 → 中央倉 → 店員賣錢。<br><br>接下來自由發展：多蓋產線衝產量、🏙️經營展店提需求、📊市場戰搶市佔、🌟天賦樹、✨轉型上市…<br><small>隨時可在 ⚙️設定 重看教學。</small>", btn:"完成，開始遊玩！" },
+];
+let tutActive = false;
+function tutOvHidden(){ return document.getElementById("overlay").classList.contains("hidden"); }
+function tutModalHas(s){ return document.getElementById("modal").innerHTML.includes(s); }
+function startTutorial(){
+  S.tutorial = S.tutorial || {step:0, done:false, granted:false};
+  if(S.tutorial.done) return;
+  if(!S.tutorial.granted){ S.resource += 1200; S.tutorial.granted = true; renderHeader(); }   // 創業基金
+  tutActive = true; renderTutorial();
+}
+function endTutorial(){
+  tutActive = false; S.tutorial.done = true;
+  const el = document.getElementById("tutorial"); if(el) el.classList.add("hidden");
+  save();
+}
+function skipTutorial(){ endTutorial(); toast("已跳過教學，可在 ⚙️設定 重看"); }
+function advanceTutorial(){
+  S.tutorial.step++;
+  if(S.tutorial.step >= TUTORIAL.length){ endTutorial(); confettiBurst(); toast("🎓 教學完成，祝你帝國長青！"); return; }
+  renderTutorial();
+}
+function replayTutorial(){ closeModal(); S.tutorial = {step:0, done:false, granted:true}; tutActive=true; renderTutorial(); }
+window.replayTutorial = replayTutorial;
+function renderTutorial(){
+  const step = TUTORIAL[S.tutorial.step]; if(!step){ endTutorial(); return; }
+  let el = document.getElementById("tutorial");
+  if(!el){ el = document.createElement("div"); el.id="tutorial"; document.body.appendChild(el); }
+  el.classList.remove("hidden");
+  const n = S.tutorial.step+1, total = TUTORIAL.length;
+  const center = step.center || !step.spot;
+  el.innerHTML = `
+    ${center ? '<div class="tut-dim"></div>'
+             : '<div class="tut-mask tut-top"></div><div class="tut-mask tut-bottom"></div><div class="tut-mask tut-left"></div><div class="tut-mask tut-right"></div><div class="tut-ring"></div>'}
+    <div class="tut-bubble ${center?'center':''}">
+      <div class="tut-step">📖 教學 ${n} / ${total}</div>
+      <div class="tut-text">${step.html}</div>
+      ${step.btn ? `<button class="tut-btn primary">${step.btn}</button>` : `<div class="tut-wait">↳ 完成上面的動作會自動繼續</div>`}
+      <button class="tut-skip">跳過教學</button>
+    </div>`;
+  el.querySelector(".tut-skip").onclick = skipTutorial;
+  const b = el.querySelector(".tut-btn"); if(b) b.onclick = advanceTutorial;
+  positionTutorial(step);
+}
+function tutUnionRect(selectors){
+  let r = null;
+  for(const s of selectors){
+    const e = document.querySelector(s); if(!e) continue;
+    const b = e.getBoundingClientRect(); if(b.width===0 && b.height===0) continue;
+    r = r ? {l:Math.min(r.l,b.left), t:Math.min(r.t,b.top), rt:Math.max(r.rt,b.right), bt:Math.max(r.bt,b.bottom)}
+          : {l:b.left, t:b.top, rt:b.right, bt:b.bottom};
+  }
+  return r;
+}
+function positionTutorial(step){
+  const el = document.getElementById("tutorial"); if(!el) return;
+  const bub = el.querySelector(".tut-bubble");
+  if(step.center || !step.spot){ if(bub) bub.style.cssText=""; return; }
+  const r = tutUnionRect(step.spot);
+  const masks = ["tut-top","tut-bottom","tut-left","tut-right"].map(c=>el.querySelector("."+c));
+  const ring = el.querySelector(".tut-ring");
+  if(!r){ masks.forEach(m=>m&&(m.style.display="none")); if(ring) ring.style.display="none"; return; }
+  masks.forEach(m=>m&&(m.style.display="block")); if(ring) ring.style.display="block";
+  const W = window.innerWidth, H = window.innerHeight, pad = 8;
+  const L = Math.max(0, r.l-pad), T = Math.max(0, r.t-pad), R = Math.min(W, r.rt+pad), B = Math.min(H, r.bt+pad);
+  ring.style.cssText = `left:${L}px; top:${T}px; width:${R-L}px; height:${B-T}px;`;
+  el.querySelector(".tut-top").style.cssText    = `left:0; top:0; width:100%; height:${T}px;`;
+  el.querySelector(".tut-bottom").style.cssText = `left:0; top:${B}px; width:100%; height:${Math.max(0,H-B)}px;`;
+  el.querySelector(".tut-left").style.cssText   = `left:0; top:${T}px; width:${L}px; height:${B-T}px;`;
+  el.querySelector(".tut-right").style.cssText  = `left:${R}px; top:${T}px; width:${Math.max(0,W-R)}px; height:${B-T}px;`;
+  const bh = bub.offsetHeight || 160;
+  const below = B + 12 + bh < H;
+  bub.style.cssText = `left:50%; transform:translateX(-50%); top:${below ? B+12 : Math.max(8, T-bh-12)}px; bottom:auto;`;
+}
+function tutorialUpdate(){
+  if(!tutActive) return;
+  const step = TUTORIAL[S.tutorial.step]; if(!step) return;
+  if(step.done && step.done()){ advanceTutorial(); return; }
+  positionTutorial(step);   // 保持聚光燈對齊（工具列/面板可能捲動）
+}
+/* ====================================================================== */
+
 function start(){
   load();
   if(S.settings.darkMode) document.body.classList.add("dark");
@@ -2883,6 +2990,7 @@ function start(){
   }
   lastTick = Date.now();
   requestAnimationFrame(loop);
+  if(!S.tutorial || !S.tutorial.done) setTimeout(startTutorial, 700);   // 首次遊玩 → 啟動新手教學
   // PWA：僅在以伺服器（http/https）開啟時啟用 manifest + service worker
   if(location.protocol!=="file:"){
     const m=document.createElement("link"); m.rel="manifest"; m.href="manifest.json";
