@@ -227,7 +227,12 @@ header{padding:12px 16px 8px; padding-top:max(12px,env(safe-area-inset-top)); te
 /* 聚光燈框：box-shadow 把框外整片變暗，但 pointer-events:none → 全程不擋點擊 */
 .tut-ring{position:fixed; border:3px solid var(--warning); border-radius:14px; pointer-events:none; box-shadow:0 0 0 9999px rgba(18,12,7,.6), 0 0 18px 4px rgba(247,193,90,.5); animation:tutPulse 1.4s ease-in-out infinite;}
 @keyframes tutPulse{0%,100%{box-shadow:0 0 0 9999px rgba(18,12,7,.58), 0 0 14px 3px rgba(247,193,90,.45);}50%{box-shadow:0 0 0 9999px rgba(18,12,7,.62), 0 0 24px 7px rgba(247,193,90,.7);}}
-.tut-bubble{position:fixed; left:50%; transform:translateX(-50%); width:min(320px,calc(100vw - 28px)); background:var(--card); color:var(--cocoa); border-radius:18px; padding:13px 16px 11px; box-shadow:0 12px 40px rgba(0,0,0,.45); pointer-events:auto; text-align:center; animation:pop .3s cubic-bezier(.2,1.4,.4,1); border:2px solid var(--milk-tea);}
+/* 氣泡本體不攔截點擊（可直接點穿去操作地圖）；只有按鈕可點 */
+.tut-bubble{position:fixed; left:50%; transform:translateX(-50%); width:min(320px,calc(100vw - 28px)); background:var(--card); color:var(--cocoa); border-radius:18px; padding:11px 16px 11px; box-shadow:0 12px 40px rgba(0,0,0,.45); pointer-events:none; text-align:center; animation:pop .3s cubic-bezier(.2,1.4,.4,1); border:2px solid var(--milk-tea); opacity:.97;}
+.tut-bubble button{pointer-events:auto;}
+.tut-head{display:flex; align-items:center; justify-content:space-between; gap:8px; margin-bottom:4px;}
+.tut-min{background:none; border:none; color:var(--milk-tea); font-size:11.5px; font-weight:800; cursor:pointer; opacity:.85; padding:2px 4px;}
+.tut-pill{position:fixed; top:max(10px,env(safe-area-inset-top)); left:50%; transform:translateX(-50%); pointer-events:auto; background:var(--milk-tea); color:#fff; border:none; border-radius:20px; padding:8px 16px; font-size:12.5px; font-weight:800; box-shadow:0 6px 18px rgba(0,0,0,.35); cursor:pointer; z-index:121; animation:pop .25s cubic-bezier(.2,1.4,.4,1);}
 .tut-bubble.center{top:50%; transform:translate(-50%,-50%);}
 .tut-arrow{position:absolute; width:0; height:0; border-left:11px solid transparent; border-right:11px solid transparent; transform:translateX(-50%);}
 .tut-arrow.down{bottom:-12px; border-top:12px solid var(--milk-tea);}

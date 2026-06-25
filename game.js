@@ -2974,12 +2974,14 @@ function endTutorial(){
 }
 function skipTutorial(){ endTutorial(); toast("已跳過教學，可在 ⚙️設定 重看"); }
 function advanceTutorial(){
-  S.tutorial.step++;
+  S.tutorial.step++; tutCollapsed=false;
   if(S.tutorial.step >= TUTORIAL.length){ endTutorial(); confettiBurst(); toast("🎓 教學完成，祝你帝國長青！"); return; }
   renderTutorial();
 }
-function replayTutorial(){ closeModal(); S.tutorial = {step:0, done:false, granted:true}; tutActive=true; renderTutorial(); }
+function replayTutorial(){ closeModal(); S.tutorial = {step:0, done:false, granted:true}; tutActive=true; tutCollapsed=false; renderTutorial(); }
 window.replayTutorial = replayTutorial;
+let tutCollapsed = false;
+function toggleTutCollapse(){ tutCollapsed=!tutCollapsed; renderTutorial(); }
 function renderTutorial(){
   const step = TUTORIAL[S.tutorial.step]; if(!step){ endTutorial(); return; }
   let el = document.getElementById("tutorial");
@@ -2987,17 +2989,25 @@ function renderTutorial(){
   el.classList.remove("hidden");
   const n = S.tutorial.step+1, total = TUTORIAL.length;
   const center = step.center || !step.spot;
-  el.innerHTML = `
-    ${center ? '<div class="tut-dim"></div>' : '<div class="tut-ring"></div>'}
-    <div class="tut-bubble ${center?'center':''}">
-      ${center?'':'<div class="tut-arrow"></div>'}
-      <div class="tut-step">📖 教學 ${n} / ${total}</div>
-      <div class="tut-text">${step.html}</div>
-      ${step.btn ? `<button class="tut-btn primary">${step.btn}</button>` : `<div class="tut-wait">↳ 完成上面的動作會自動繼續</div>`}
-      <button class="tut-skip">跳過教學</button>
-    </div>`;
-  el.querySelector(".tut-skip").onclick = skipTutorial;
-  const b = el.querySelector(".tut-btn"); if(b) b.onclick = advanceTutorial;
+  if(!center && tutCollapsed){
+    // 收起：只留聚光燈 + 頂部小膠囊（不擋畫面）
+    el.innerHTML = `<div class="tut-ring"></div>
+      <button class="tut-pill">📖 教學 ${n}/${total}・看說明 ▸</button>`;
+    el.querySelector(".tut-pill").onclick = toggleTutCollapse;
+  } else {
+    el.innerHTML = `
+      ${center ? '<div class="tut-dim"></div>' : '<div class="tut-ring"></div>'}
+      <div class="tut-bubble ${center?'center':''}">
+        ${center?'':'<div class="tut-arrow"></div>'}
+        <div class="tut-head"><span class="tut-step">📖 教學 ${n} / ${total}</span>${center?'':'<button class="tut-min">▾ 收起</button>'}</div>
+        <div class="tut-text">${step.html}</div>
+        ${step.btn ? `<button class="tut-btn primary">${step.btn}</button>` : `<div class="tut-wait">↳ 完成上面的動作會自動繼續（可先「收起」騰出畫面）</div>`}
+        <button class="tut-skip">跳過教學</button>
+      </div>`;
+    const sk=el.querySelector(".tut-skip"); if(sk) sk.onclick = skipTutorial;
+    const mn=el.querySelector(".tut-min"); if(mn) mn.onclick = toggleTutCollapse;
+    const b = el.querySelector(".tut-btn"); if(b) b.onclick = advanceTutorial;
+  }
   positionTutorial(step);
 }
 function tutUnionRect(selectors){
@@ -3022,6 +3032,7 @@ function positionTutorial(step){
   const L = Math.max(0, r.l-pad), T = Math.max(0, r.t-pad), R = Math.min(W, r.rt+pad), B = Math.min(H, r.bt+pad);
   // 純視覺：發光框 + box-shadow 把框外變暗（不攔截點擊）
   if(ring) ring.style.cssText = `left:${L}px; top:${T}px; width:${R-L}px; height:${B-T}px;`;
+  if(!bub) return;   // 收起狀態：只定位聚光燈框
   // 氣泡放在打亮區的「空間較大那一側」，避免蓋住操作區
   const bh = bub.offsetHeight || 170, bw = bub.offsetWidth || 320;
   const roomBelow = H - B, roomAbove = T;
