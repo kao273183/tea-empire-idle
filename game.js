@@ -1394,6 +1394,70 @@ function buildAt(idx){
   if(navigator.vibrate) navigator.vibrate(8);
   renderGenList();
 }
+/* ---------- 點地圖空格 → 建造選單（手機友善，免捲到工具列）---------- */
+let buildMenuIdx = -1;
+function buildOptionsFor(idx){
+  const terr = S.terrain[idx]||"plain", res = S.resources&&S.resources[idx];
+  if(S.factory[idx] || terr==="water") return [];
+  const opts = [{tool:"belt", icon:DIRS[beltDir].arrow, name:"輸送帶", cost:0}];
+  if(fastBeltUnlocked()) opts.push({tool:"fast_belt", icon:DIRS[beltDir].fastArrow, name:"高速帶", cost:0});
+  if(splitterUnlocked()){ opts.push({tool:"splitter", icon:"🔀", name:"分流器", cost:ADV_BELT_COST.splitter}); opts.push({tool:"merger", icon:"🔃", name:"合流器", cost:ADV_BELT_COST.merger}); }
+  if(bridgeUnlocked()) opts.push({tool:"bridge", icon:"✚", name:"橋接", cost:ADV_BELT_COST.bridge});
+  const avail = GENERATORS.filter(g=> g.kind==="source" ? materialUnlocked(g.material) : g.kind==="refine" ? researchLevel("refine_tech")>0 : true);
+  for(const g of avail){
+    if(res){ if(!(g.kind==="source" && g.material===res)) continue; }   // 資源產地：只能蓋對應採集機
+    else if(g.rare) continue;                                           // 稀有採集機只在其產地
+    if(!canPlaceOn(terr, g)) continue;
+    opts.push({tool:g.id, icon:g.icon, name:g.name, cost:genCost(g)});
+  }
+  return opts;
+}
+function closeBuildMenu(){ const m=document.getElementById("buildMenu"); if(m) m.remove(); buildMenuIdx=-1; }
+function openBuildMenu(idx){
+  closeBuildMenu();
+  const terr = S.terrain[idx]||"plain";
+  if(terr==="water"){ toast("💧 水域要先 🏞️整地 才能蓋"); return; }
+  if(S.factory[idx]) return;
+  const opts = buildOptionsFor(idx);
+  if(!opts.length){ toast("這格目前不能蓋"); return; }
+  buildMenuIdx = idx;
+  const m = document.createElement("div"); m.id="buildMenu"; m.className="build-menu";
+  m.innerHTML = `<div class="bm-backdrop"></div>
+    <div class="bm-card">
+      <div class="bm-title">🧱 在這格蓋什麼？</div>
+      <div class="bm-grid">${opts.map(o=>{
+        const can = o.cost<=S.resource;
+        return `<button class="bm-opt ${can?'':'poor'}" data-bm="${o.tool}">
+          <span class="bm-ico">${o.icon}</span><span class="bm-name">${o.name}</span>
+          <span class="bm-cost">${o.cost>0?money(o.cost):'免費'}</span></button>`;
+      }).join("")}</div>
+      <button class="bm-close ghost">取消</button>
+    </div>`;
+  document.body.appendChild(m);
+  m.querySelector(".bm-backdrop").onclick = closeBuildMenu;
+  m.querySelector(".bm-close").onclick = closeBuildMenu;
+  m.querySelectorAll("[data-bm]").forEach(b=> b.onclick = ()=> pickBuild(idx, b.dataset.bm));
+  // 定位：貼著被點的格子，超出畫面則夾回
+  const cellEl = document.querySelector(`[data-cell="${idx}"]`);
+  const card = m.querySelector(".bm-card");
+  const W = window.innerWidth, H = window.innerHeight;
+  const cw = card.offsetWidth, ch = card.offsetHeight;
+  let cx = W/2, cy = H/2;
+  if(cellEl){ const r=cellEl.getBoundingClientRect();
+    cx = r.left + r.width/2;
+    cy = (r.bottom + ch + 10 < H) ? r.bottom + 10 : Math.max(8, r.top - ch - 10);
+  } else { cy = H/2 - ch/2; }
+  const left = Math.max(8, Math.min(W - cw - 8, cx - cw/2));
+  const top  = Math.max(8, Math.min(H - ch - 8, cy));
+  card.style.left = left+"px"; card.style.top = top+"px";
+}
+function pickBuild(idx, tool){
+  selectedTool = tool;                 // 切到該工具（蓋完保留 → 輸送帶可接著拖曳延伸）
+  buildAt(idx);
+  renderPalette();
+  closeBuildMenu();
+}
+window.openBuildMenu=openBuildMenu; window.closeBuildMenu=closeBuildMenu;
 // 移除機台（退一半放置費）
 function warehouseCount(){ return S.factory.filter(c=>c&&c.t==="machine"&&GEN_MAP[c.id].kind==="store").length; }
 function removeMachine(idx, refund){
@@ -1777,7 +1841,12 @@ function bindFactoryDrag(){
         else if(dragLast>=0 && bpClip){ bpPaste(dragLast); }            // 單點 → 貼上
         else if(dragLast>=0) toast("拖曳框選一段產線來複製");
       }
-      else if(dragging && !dragMoved && !gestureWasPan && dragLast>=0) buildAt(dragLast);  // 單點建造
+      else if(dragging && !dragMoved && !gestureWasPan && dragLast>=0){               // 單點
+        const occupied = !!S.factory[dragLast];
+        const actionTool = selectedTool==="delete"||selectedTool==="terraform"||selectedTool==="blueprint"||selectedTool==="move";
+        if(!occupied && !actionTool && (S.terrain[dragLast]||"plain")!=="water") openBuildMenu(dragLast);  // 空格→建造選單
+        else buildAt(dragLast);                                                       // 已佔用/動作工具→原行為
+      }
       else if(dragMoved && selectedTool!=="move" && !panMode) renderFactoryStats();
       dragging=false; dragLast=-1; panMode=false; gestureWasPan=false;
     }else{ panMode=false; }
@@ -2870,16 +2939,16 @@ function switchPage(p){
 window.openPrestige=openPrestige;
 
 /* ===================== 新手互動教學（手把手聚光燈）===================== */
-const FACTORY_SPOT = ["#factoryPalette"];   // 工廠建造：打亮工具列（地皮雖變暗仍可點）
+const FACTORY_SPOT = ["#factoryWrap"];   // 工廠建造：打亮地圖（點空格叫出建造選單）
 const TUTORIAL = [
   { center:true, html:"👋 歡迎來到 <b>手搖飲帝國</b>！<br>你要從一間小攤，蓋自動化工廠、展店、打市場戰，征服世界。<br>先用一分鐘學會核心：<b>生產飲料 → 賣錢</b>。<br><br>🎁 送你 <b>$1,200 創業基金</b> 起步！", btn:"開始教學" },
-  { spot:FACTORY_SPOT, html:"這是你的<b>工具列</b>。珍奶要 3 種原料，先蓋齊原料機：<br>點 🍃<b>茶園</b>、⚫<b>粉圓廠</b>、🥤<b>製杯廠</b> 各一座（選工具→在空地點一下放置；🍃茶園要放<b>綠色草地</b>）。",
+  { spot:FACTORY_SPOT, html:"<b>點地圖上的空格</b> → 會跳出建造選單。<br>珍奶要 3 種原料，請蓋齊 🍃<b>茶園</b>、⚫<b>粉圓廠</b>、🥤<b>製杯廠</b> 各一座。<br><small>🍃茶園只能蓋在<b>綠色草地</b>格。</small>",
     done:()=> (S.generators.tea_farm||0)>=1 && (S.generators.pearl_mill||0)>=1 && (S.generators.cup_plant||0)>=1 },
-  { spot:FACTORY_SPOT, html:"很好！接著蓋一座 🫕<b>調製站</b>，它會把原料自動做成珍奶。",
+  { spot:FACTORY_SPOT, html:"很好！再點一格空地，蓋一座 🫕<b>調製站</b>，它會把原料自動做成珍奶。",
     done:()=> (S.generators.mixer||0)>=1 },
-  { spot:FACTORY_SPOT, html:"最後再蓋一座 🧋<b>出貨口</b>。",
+  { spot:FACTORY_SPOT, html:"再點一格，蓋一座 🧋<b>出貨口</b>。",
     done:()=> (S.generators.counter||0)>=1 },
-  { spot:FACTORY_SPOT, html:"現在<b>接管路</b>！選 🔀<b>輸送帶</b>，在格子上<b>拖曳</b>鋪設（朝拖曳方向、自動轉彎）：<br>① 把 3 種原料都送進 🫕調製站<br>② 再從調製站接一條到 🧋出貨口<br>第一杯珍奶送達就完成！",
+  { spot:FACTORY_SPOT, html:"現在<b>接管路</b>！點空格選 🔀<b>輸送帶</b> 放下第一段，接著在格子上<b>拖曳</b>就能連續鋪設：<br>① 3 種原料都接進 🫕調製站<br>② 調製站再接一條到 🧋出貨口<br>第一杯珍奶送達就完成！",
     done:()=> (S.retail?.stock||0)>0 || (FX.delivered||0)>0 },
   { spot:["#tab-codex"], html:"🎉 珍奶進<b>中央倉</b>了！但還沒換成錢。<br>點底部「🏙️<b>經營</b>」分頁。",
     done:()=> isVisible("page-codex") },
