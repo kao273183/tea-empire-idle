@@ -224,9 +224,9 @@ header{padding:12px 16px 8px; padding-top:max(12px,env(safe-area-inset-top)); te
 #tutorial{position:fixed; inset:0; z-index:120; pointer-events:none;}
 #tutorial.hidden{display:none;}
 .tut-dim{position:fixed; inset:0; background:rgba(18,12,7,.74); pointer-events:auto; animation:fade .25s;}
-.tut-mask{position:fixed; background:rgba(18,12,7,.7); pointer-events:auto;}
-.tut-ring{position:fixed; border:3px solid var(--warning); border-radius:14px; box-shadow:0 0 0 3px rgba(247,193,90,.35), 0 0 18px 4px rgba(247,193,90,.5); pointer-events:none; animation:tutPulse 1.4s ease-in-out infinite;}
-@keyframes tutPulse{0%,100%{box-shadow:0 0 0 3px rgba(247,193,90,.3), 0 0 14px 3px rgba(247,193,90,.45);}50%{box-shadow:0 0 0 5px rgba(247,193,90,.45), 0 0 24px 7px rgba(247,193,90,.65);}}
+/* 聚光燈框：box-shadow 把框外整片變暗，但 pointer-events:none → 全程不擋點擊 */
+.tut-ring{position:fixed; border:3px solid var(--warning); border-radius:14px; pointer-events:none; box-shadow:0 0 0 9999px rgba(18,12,7,.6), 0 0 18px 4px rgba(247,193,90,.5); animation:tutPulse 1.4s ease-in-out infinite;}
+@keyframes tutPulse{0%,100%{box-shadow:0 0 0 9999px rgba(18,12,7,.58), 0 0 14px 3px rgba(247,193,90,.45);}50%{box-shadow:0 0 0 9999px rgba(18,12,7,.62), 0 0 24px 7px rgba(247,193,90,.7);}}
 .tut-bubble{position:fixed; left:50%; transform:translateX(-50%); width:min(340px,calc(100vw - 28px)); background:var(--card); color:var(--cocoa); border-radius:18px; padding:16px 18px 14px; box-shadow:0 12px 40px rgba(0,0,0,.4); pointer-events:auto; text-align:center; animation:pop .3s cubic-bezier(.2,1.4,.4,1); border:2px solid var(--milk-tea);}
 .tut-bubble.center{top:50%; transform:translate(-50%,-50%);}
 .tut-step{font-size:12px; font-weight:800; color:var(--milk-tea); margin-bottom:6px;}

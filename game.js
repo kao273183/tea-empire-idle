@@ -2870,7 +2870,7 @@ function switchPage(p){
 window.openPrestige=openPrestige;
 
 /* ===================== 新手互動教學（手把手聚光燈）===================== */
-const FACTORY_SPOT = ["#factoryWrap", "#factoryPalette"];   // 工廠：地皮＋工具列一起開洞
+const FACTORY_SPOT = ["#factoryPalette"];   // 工廠建造：打亮工具列（地皮雖變暗仍可點）
 const TUTORIAL = [
   { center:true, html:"👋 歡迎來到 <b>手搖飲帝國</b>！<br>你要從一間小攤，蓋自動化工廠、展店、打市場戰，征服世界。<br>先用一分鐘學會核心：<b>生產飲料 → 賣錢</b>。<br><br>🎁 送你 <b>$1,200 創業基金</b> 起步！", btn:"開始教學" },
   { spot:FACTORY_SPOT, html:"這是你的<b>工具列</b>。珍奶要 3 種原料，先蓋齊原料機：<br>點 🍃<b>茶園</b>、⚫<b>粉圓廠</b>、🥤<b>製杯廠</b> 各一座（選工具→在空地點一下放置；🍃茶園要放<b>綠色草地</b>）。",
@@ -2919,8 +2919,7 @@ function renderTutorial(){
   const n = S.tutorial.step+1, total = TUTORIAL.length;
   const center = step.center || !step.spot;
   el.innerHTML = `
-    ${center ? '<div class="tut-dim"></div>'
-             : '<div class="tut-mask tut-top"></div><div class="tut-mask tut-bottom"></div><div class="tut-mask tut-left"></div><div class="tut-mask tut-right"></div><div class="tut-ring"></div>'}
+    ${center ? '<div class="tut-dim"></div>' : '<div class="tut-ring"></div>'}
     <div class="tut-bubble ${center?'center':''}">
       <div class="tut-step">📖 教學 ${n} / ${total}</div>
       <div class="tut-text">${step.html}</div>
@@ -2945,21 +2944,22 @@ function positionTutorial(step){
   const el = document.getElementById("tutorial"); if(!el) return;
   const bub = el.querySelector(".tut-bubble");
   if(step.center || !step.spot){ if(bub) bub.style.cssText=""; return; }
-  const r = tutUnionRect(step.spot);
-  const masks = ["tut-top","tut-bottom","tut-left","tut-right"].map(c=>el.querySelector("."+c));
   const ring = el.querySelector(".tut-ring");
-  if(!r){ masks.forEach(m=>m&&(m.style.display="none")); if(ring) ring.style.display="none"; return; }
-  masks.forEach(m=>m&&(m.style.display="block")); if(ring) ring.style.display="block";
+  const r = tutUnionRect(step.spot);
+  if(!r){ if(ring) ring.style.display="none"; if(bub) bub.style.cssText="left:50%; transform:translateX(-50%); bottom:18px; top:auto;"; return; }
+  if(ring) ring.style.display="block";
   const W = window.innerWidth, H = window.innerHeight, pad = 8;
   const L = Math.max(0, r.l-pad), T = Math.max(0, r.t-pad), R = Math.min(W, r.rt+pad), B = Math.min(H, r.bt+pad);
-  ring.style.cssText = `left:${L}px; top:${T}px; width:${R-L}px; height:${B-T}px;`;
-  el.querySelector(".tut-top").style.cssText    = `left:0; top:0; width:100%; height:${T}px;`;
-  el.querySelector(".tut-bottom").style.cssText = `left:0; top:${B}px; width:100%; height:${Math.max(0,H-B)}px;`;
-  el.querySelector(".tut-left").style.cssText   = `left:0; top:${T}px; width:${L}px; height:${B-T}px;`;
-  el.querySelector(".tut-right").style.cssText  = `left:${R}px; top:${T}px; width:${Math.max(0,W-R)}px; height:${B-T}px;`;
-  const bh = bub.offsetHeight || 160;
-  const below = B + 12 + bh < H;
-  bub.style.cssText = `left:50%; transform:translateX(-50%); top:${below ? B+12 : Math.max(8, T-bh-12)}px; bottom:auto;`;
+  // 純視覺：發光框 + box-shadow 把框外變暗（不攔截點擊）
+  if(ring) ring.style.cssText = `left:${L}px; top:${T}px; width:${R-L}px; height:${B-T}px;`;
+  // 氣泡放在打亮區的「空間較大那一側」，避免蓋住操作區
+  const bh = bub.offsetHeight || 170;
+  const roomBelow = H - B, roomAbove = T;
+  let topPx;
+  if(roomBelow >= bh + 16) topPx = B + 12;
+  else if(roomAbove >= bh + 16) topPx = T - bh - 12;
+  else topPx = (roomAbove > roomBelow) ? 8 : Math.max(8, H - bh - 8);   // 兩側都擠 → 貼邊
+  bub.style.cssText = `left:50%; transform:translateX(-50%); top:${topPx}px; bottom:auto;`;
 }
 function tutorialUpdate(){
   if(!tutActive) return;
