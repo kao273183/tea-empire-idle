@@ -2921,6 +2921,7 @@ function renderTutorial(){
   el.innerHTML = `
     ${center ? '<div class="tut-dim"></div>' : '<div class="tut-ring"></div>'}
     <div class="tut-bubble ${center?'center':''}">
+      ${center?'':'<div class="tut-arrow"></div>'}
       <div class="tut-step">📖 教學 ${n} / ${total}</div>
       <div class="tut-text">${step.html}</div>
       ${step.btn ? `<button class="tut-btn primary">${step.btn}</button>` : `<div class="tut-wait">↳ 完成上面的動作會自動繼續</div>`}
@@ -2953,13 +2954,21 @@ function positionTutorial(step){
   // 純視覺：發光框 + box-shadow 把框外變暗（不攔截點擊）
   if(ring) ring.style.cssText = `left:${L}px; top:${T}px; width:${R-L}px; height:${B-T}px;`;
   // 氣泡放在打亮區的「空間較大那一側」，避免蓋住操作區
-  const bh = bub.offsetHeight || 170;
+  const bh = bub.offsetHeight || 170, bw = bub.offsetWidth || 320;
   const roomBelow = H - B, roomAbove = T;
-  let topPx;
-  if(roomBelow >= bh + 16) topPx = B + 12;
-  else if(roomAbove >= bh + 16) topPx = T - bh - 12;
-  else topPx = (roomAbove > roomBelow) ? 8 : Math.max(8, H - bh - 8);   // 兩側都擠 → 貼邊
+  let topPx, placedAbove;
+  if(roomBelow >= bh + 16){ topPx = B + 12; placedAbove = false; }
+  else if(roomAbove >= bh + 16){ topPx = T - bh - 12; placedAbove = true; }
+  else { placedAbove = roomAbove > roomBelow; topPx = placedAbove ? 8 : Math.max(8, H - bh - 8); }
   bub.style.cssText = `left:50%; transform:translateX(-50%); top:${topPx}px; bottom:auto;`;
+  // 箭頭指向打亮區（把氣泡與聚光燈視覺連起來）
+  const arrow = el.querySelector(".tut-arrow");
+  if(arrow){
+    const bubLeft = W/2 - bw/2, ringCx = (L+R)/2;
+    const ax = Math.max(20, Math.min(bw-20, ringCx - bubLeft));
+    arrow.className = "tut-arrow " + (placedAbove ? "down" : "up");
+    arrow.style.left = ax + "px";
+  }
 }
 function tutorialUpdate(){
   if(!tutActive) return;

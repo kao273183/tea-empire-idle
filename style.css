@@ -227,10 +227,13 @@ header{padding:12px 16px 8px; padding-top:max(12px,env(safe-area-inset-top)); te
 /* 聚光燈框：box-shadow 把框外整片變暗，但 pointer-events:none → 全程不擋點擊 */
 .tut-ring{position:fixed; border:3px solid var(--warning); border-radius:14px; pointer-events:none; box-shadow:0 0 0 9999px rgba(18,12,7,.6), 0 0 18px 4px rgba(247,193,90,.5); animation:tutPulse 1.4s ease-in-out infinite;}
 @keyframes tutPulse{0%,100%{box-shadow:0 0 0 9999px rgba(18,12,7,.58), 0 0 14px 3px rgba(247,193,90,.45);}50%{box-shadow:0 0 0 9999px rgba(18,12,7,.62), 0 0 24px 7px rgba(247,193,90,.7);}}
-.tut-bubble{position:fixed; left:50%; transform:translateX(-50%); width:min(340px,calc(100vw - 28px)); background:var(--card); color:var(--cocoa); border-radius:18px; padding:16px 18px 14px; box-shadow:0 12px 40px rgba(0,0,0,.4); pointer-events:auto; text-align:center; animation:pop .3s cubic-bezier(.2,1.4,.4,1); border:2px solid var(--milk-tea);}
+.tut-bubble{position:fixed; left:50%; transform:translateX(-50%); width:min(320px,calc(100vw - 28px)); background:var(--card); color:var(--cocoa); border-radius:18px; padding:13px 16px 11px; box-shadow:0 12px 40px rgba(0,0,0,.45); pointer-events:auto; text-align:center; animation:pop .3s cubic-bezier(.2,1.4,.4,1); border:2px solid var(--milk-tea);}
 .tut-bubble.center{top:50%; transform:translate(-50%,-50%);}
+.tut-arrow{position:absolute; width:0; height:0; border-left:11px solid transparent; border-right:11px solid transparent; transform:translateX(-50%);}
+.tut-arrow.down{bottom:-12px; border-top:12px solid var(--milk-tea);}
+.tut-arrow.up{top:-12px; border-bottom:12px solid var(--milk-tea);}
 .tut-step{font-size:12px; font-weight:800; color:var(--milk-tea); margin-bottom:6px;}
-.tut-text{font-size:14px; line-height:1.6; font-weight:600;}
+.tut-text{font-size:13px; line-height:1.5; font-weight:600;}
 .tut-text b{color:var(--milk-tea-2);}
 .tut-text small{opacity:.7; font-size:12px;}
 .tut-btn{width:100%; margin-top:12px;}
