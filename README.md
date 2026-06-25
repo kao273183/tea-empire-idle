@@ -4,9 +4,7 @@
 
 ## ▶️ 立即遊玩
 
-👉 **https://你的帳號.github.io/tea-empire-idle/**
-
-> 部署後把上面網址換成你的 GitHub Pages 連結。
+👉 **https://kao273183.github.io/tea-empire-idle/**
 
 ## 🎮 玩法概覽
 
