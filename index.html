@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no">
+<meta name="theme-color" content="#C89B6E">
+<title>手搖飲帝國</title>
+<!-- manifest 改由 JS 在非 file:// 時動態注入，避免直接開檔時的 net::ERR_FAILED -->
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div class="app">
+  <header>
+    <button class="gear" id="gearBtn" title="設定">⚙️</button>
+    <div class="resource tabular" id="resourceEl">$0</div>
+    <div class="ops tabular" id="opsEl">⚡ $0 / 秒</div>
+  </header>
+
+  <!-- 經營頁 -->
+  <main class="page" id="page-biz">
+    <div id="eventBanner" class="hidden"></div>
+    <div id="decisionBanner" class="hidden"></div>
+    <div class="cup-zone">
+      <div class="cup" id="cupBtn">🪙</div>
+      <div class="tap-hint" id="tapHint">點我賺錢！</div>
+    </div>
+    <button class="prestige-btn" id="prestigeBtn">✨ 轉型上市（IPO）</button>
+    <button class="path-btn hidden" id="pathBtn">🏢 企業路線</button>
+    <div id="chainSummary"></div>
+    <div id="factoryWrap">
+      <div id="factoryPan">
+        <div id="factoryGrid"></div>
+        <div id="factoryItems"></div>
+        <div id="bpSelect" class="hidden"></div>
+      </div>
+      <canvas id="miniMap" width="132" height="110"></canvas>
+      <div id="zoomCtrl">
+        <button id="zoomIn">＋</button>
+        <button id="zoomOut">－</button>
+      </div>
+    </div>
+    <div class="factory-hint">👇 拖曳鋪帶、點機台升級、點帶子轉向。地圖很大：<b>滾輪/雙指</b>平移、<b>＋/－</b>縮放、點小地圖跳轉。<b>📐藍圖</b>可框選一段產線→點一下整段複製貼上。</div>
+    <div id="factoryPalette"></div>
+    <div id="factoryActions">
+      <button id="btnOrders">📦 批發</button>
+      <button id="btnResearch">🔬 科技</button>
+      <button id="btnRecipe">🍹 配方</button>
+      <button id="btnBatch">⬆️ 批次升級</button>
+      <button id="btnClear">🧹 清空地皮</button>
+    </div>
+    <div id="genList" style="display:none"></div>
+  </main>
+
+  <!-- 地圖頁 -->
+  <main class="page hidden" id="page-codex">
+    <!-- 世界地圖：區域選擇 -->
+    <div id="mapWorld">
+      <div class="codex-head">
+        <div class="pct">🌏 全球圖鑑 <span id="codexCount">0 / 0</span> <span class="tabular" id="codexPct">(0%)</span></div>
+        <div class="bar"><i id="codexBar" style="width:0%"></i></div>
+        <div id="codexSupply" class="codex-supply"></div>
+      </div>
+      <button class="share-btn" id="btnRetail" style="background:linear-gradient(135deg,var(--matcha),#5E9A4C)">🏪 零售經營（雇店員賣貨賺錢）</button>
+      <button class="share-btn" id="btnMarketWar" style="background:linear-gradient(135deg,#C0635E,#9A4C4C)">📊 市場戰況（對手搶客・市佔率）</button>
+      <div class="section-title">世界地圖・展店＝提升各區顧客需求（各區可分別定價）</div>
+      <div id="regionList"></div>
+      <button class="share-btn" id="shareBtn">📤 分享戰報</button>
+    </div>
+    <!-- 區域內：品牌與地標 -->
+    <div id="mapRegion" class="hidden">
+      <button class="back-btn" id="mapBack">← 回世界地圖</button>
+      <div class="codex-head">
+        <div class="pct" id="regionTitle">📍 區域</div>
+        <div class="bar"><i id="regionBar" style="width:0%"></i></div>
+      </div>
+      <div id="brandList"></div>
+    </div>
+  </main>
+
+  <!-- 成就頁 -->
+  <main class="page hidden" id="page-achieve">
+    <div class="codex-head">
+      <div class="pct">🏆 成就 <span id="achCount">0 / 0</span></div>
+      <p style="margin:6px 0 2px;font-size:12.5px;opacity:.7">達成成就獲得<b>招牌聲望 🏅</b>（永久全域產量加成），解鎖帝國的每一個里程碑。</p>
+      <p style="margin:2px 0 0;font-size:13px;font-weight:800;color:var(--success)">🏅 招牌聲望　<span id="repEl">0 點</span></p>
+    </div>
+    <div id="achList"></div>
+  </main>
+
+  <!-- 天賦頁 -->
+  <main class="page hidden" id="page-talent">
+    <div class="codex-head">
+      <div class="pct">🌟 天賦點 <span class="tabular" id="tpEl">0</span></div>
+      <p style="margin:6px 0 0;font-size:12.5px;opacity:.7">每次轉型上市依獲得股票數給予天賦點，永久強化整座帝國。</p>
+    </div>
+    <div id="talentList"></div>
+  </main>
+
+  <nav>
+    <button id="tab-biz" class="active" data-page="biz"><span class="ico">🏭</span>工廠</button>
+    <button id="tab-codex" data-page="codex"><span class="ico">🏙️</span>經營</button>
+    <button id="tab-achieve" data-page="achieve"><span class="ico">🏆</span>成就</button>
+    <button id="tab-talent" data-page="talent"><span class="ico">🌟</span>天賦</button>
+  </nav>
+  <button id="petBtn" class="pet-fab" title="寵物"></button>
+</div>
+
+<!-- 浮層容器 -->
+<div class="overlay hidden" id="overlay"><div class="modal" id="modal"></div></div>
+
+<script src="game.js"></script>
+</body>
+</html>

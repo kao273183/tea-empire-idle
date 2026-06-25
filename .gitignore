@@ -1,0 +1,13 @@
+# 設計文件（不公開）
+idle-game-*.md
+
+# 作業系統 / 編輯器雜項
+.DS_Store
+Thumbs.db
+*.swp
+.vscode/
+.idea/
+
+# 暫存
+*.log
+node_modules/

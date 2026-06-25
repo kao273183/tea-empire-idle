@@ -1,0 +1,13 @@
+{
+  "name": "手搖飲帝國",
+  "short_name": "手搖帝國",
+  "description": "從台灣一間小攤展店征服世界的手搖飲放置遊戲",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#FBF6EE",
+  "theme_color": "#C89B6E",
+  "icons": [
+    { "src": "icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable" }
+  ]
+}
